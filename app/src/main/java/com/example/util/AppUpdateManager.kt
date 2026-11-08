@@ -13,7 +13,6 @@ import java.net.URL
 data class AppUpdateInfo(
     val hasUpdate: Boolean,
     val latestVersionName: String,
-    val latestVersionCode: Int,
     val releaseNotes: String,
     val downloadUrl: String,
     val releasePageUrl: String
@@ -22,17 +21,14 @@ data class AppUpdateInfo(
 object AppUpdateManager {
     private const val TAG = "AppUpdateManager"
 
-    /**
-     * Repositorio de GitHub para consultar los releases.
-     * Puedes actualizar 'owner' y 'repo' según la cuenta del usuario en GitHub.
-     */
-    var githubOwner: String = "dragontec691"
-    var githubRepo: String = "agenda-digital-peru"
+    // Repositorio conectado en GitHub
+    const val GITHUB_OWNER: String = "franklingutierrez"
+    const val GITHUB_REPO: String = "Agenda-Digital"
 
-    suspend fun checkForUpdates(currentVersionCode: Int, currentVersionName: String): AppUpdateInfo? {
+    suspend fun checkForUpdates(currentVersionName: String): AppUpdateInfo? {
         return withContext(Dispatchers.IO) {
             try {
-                val apiUrl = "https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest"
+                val apiUrl = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
                 val url = URL(apiUrl)
                 val connection = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -45,37 +41,47 @@ object AppUpdateManager {
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     val responseText = connection.inputStream.bufferedReader().use { it.readText() }
                     val json = JSONObject(responseText)
+                    val rawTag = json.optString("tag_name", "").trim()
+                    val htmlUrl = json.optString("html_url", "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases")
+                    val bodyNotes = json.optString("body", "Nueva versión disponible con mejoras.")
 
-                    val tagName = json.optString("tag_name", "").removePrefix("v").trim()
-                    val bodyNotes = json.optString("body", "Nueva versión disponible con mejoras y optimizaciones.")
-                    val htmlUrl = json.optString("html_url", "https://github.com/$githubOwner/$githubRepo/releases")
+                    // Validar tag y versión numérica
+                    val remoteVersion = sanitizeTagToVersion(rawTag) ?: return@withContext null
 
-                    var apkDownloadUrl = htmlUrl
+                    // Buscar asset APK en el release del repositorio correcto
                     val assets = json.optJSONArray("assets")
+                    var apkDownloadUrl: String? = null
                     if (assets != null) {
                         for (i in 0 until assets.length()) {
                             val asset = assets.getJSONObject(i)
                             val name = asset.optString("name", "")
                             if (name.endsWith(".apk", ignoreCase = true)) {
-                                apkDownloadUrl = asset.optString("browser_download_url", htmlUrl)
-                                break
+                                val browserUrl = asset.optString("browser_download_url", "")
+                                if (browserUrl.isNotBlank() && isUrlFromCorrectRepo(browserUrl)) {
+                                    apkDownloadUrl = browserUrl
+                                    break
+                                }
                             }
                         }
                     }
 
-                    // Comparación semántica simple o por código
-                    val isNewer = isVersionNewer(tagName, currentVersionName)
+                    // Si no hay asset APK descargable del repositorio correcto, no notificar actualización directa
+                    val finalApkUrl = apkDownloadUrl ?: return@withContext null
+
+                    val isNewer = isVersionStrictlyNewer(remoteVersion, currentVersionName)
+                    if (!isNewer) {
+                        return@withContext null
+                    }
 
                     AppUpdateInfo(
-                        hasUpdate = isNewer,
-                        latestVersionName = tagName.ifEmpty { "1.1" },
-                        latestVersionCode = currentVersionCode + 1,
+                        hasUpdate = true,
+                        latestVersionName = remoteVersion,
                         releaseNotes = bodyNotes,
-                        downloadUrl = apkDownloadUrl,
+                        downloadUrl = finalApkUrl,
                         releasePageUrl = htmlUrl
                     )
                 } else {
-                    Log.d(TAG, "No se encontró release en GitHub o repositorio privado (código: ${connection.responseCode})")
+                    Log.d(TAG, "No se encontró release en GitHub (HTTP ${connection.responseCode})")
                     null
                 }
             } catch (e: Exception) {
@@ -96,10 +102,44 @@ object AppUpdateManager {
         }
     }
 
-    private fun isVersionNewer(remoteVersion: String, currentVersion: String): Boolean {
-        if (remoteVersion.isBlank()) return false
-        val remoteParts = remoteVersion.split(".").mapNotNull { it.toIntOrNull() }
-        val currentParts = currentVersion.split(".").mapNotNull { it.toIntOrNull() }
+    /**
+     * Valida y sanitiza una etiqueta de versión (ej. "v1.2", "1.2", "v1.10.3").
+     * Rechaza tags inválidos como "beta", "v-draft", "release-candidate", "", etc.
+     */
+    fun sanitizeTagToVersion(rawTag: String): String? {
+        val trimmed = rawTag.trim()
+        if (trimmed.isEmpty()) return null
+        val tagWithoutPrefix = if (trimmed.startsWith("v", ignoreCase = true)) {
+            trimmed.substring(1).trim()
+        } else {
+            trimmed
+        }
+
+        if (tagWithoutPrefix.isEmpty()) return null
+
+        val parts = tagWithoutPrefix.split(".")
+        if (parts.isEmpty()) return null
+
+        // Cada segmento debe ser un número entero válido >= 0
+        for (part in parts) {
+            val num = part.toIntOrNull() ?: return null
+            if (num < 0) return null
+        }
+
+        return tagWithoutPrefix
+    }
+
+    /**
+     * Compara numéricamente dos versiones semánticas (ej. "1.10" > "1.9", "1.0.1" > "1.0").
+     * Devuelve true estrictamente si remoteVersion > currentVersion.
+     * Rechaza versiones inválidas, menores o iguales.
+     */
+    fun isVersionStrictlyNewer(remoteVersion: String, currentVersion: String): Boolean {
+        val remoteValid = sanitizeTagToVersion(remoteVersion) ?: return false
+        val currentValid = sanitizeTagToVersion(currentVersion) ?: return false
+
+        val remoteParts = remoteValid.split(".").map { it.toInt() }
+        val currentParts = currentValid.split(".").map { it.toInt() }
 
         val maxLen = maxOf(remoteParts.size, currentParts.size)
         for (i in 0 until maxLen) {
@@ -108,6 +148,16 @@ object AppUpdateManager {
             if (r > c) return true
             if (r < c) return false
         }
+
         return false
+    }
+
+    /**
+     * Valida que la URL del asset APK pertenezca al repositorio oficial de GitHub configurado.
+     */
+    fun isUrlFromCorrectRepo(url: String): Boolean {
+        val expectedSegment = "$GITHUB_OWNER/$GITHUB_REPO"
+        return url.contains(expectedSegment, ignoreCase = true) ||
+                url.contains("github.com/$expectedSegment", ignoreCase = true)
     }
 }

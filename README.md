@@ -1,6 +1,10 @@
 # 📅 Agenda Digital Inteligente (Perú) 🇵🇪
 
-Una moderna aplicación Android desarrollada en **Kotlin** y **Jetpack Compose** bajo los lineamientos de **Material Design 3**, diseñada para la máxima productividad personal y profesional con metodologías ágiles, recordatorios inteligentes, despertador con sonido/vibración y sincronización oficial de feriados nacionales peruanos.
+Una moderna aplicación Android desarrollada en **Kotlin** y **Jetpack Compose** bajo los lineamientos de **Material Design 3**, diseñada para la máxima productividad personal y profesional con metodologías ágiles (**Kanban** y **Matriz de Eisenhower**), recordatorios inteligentes con sonido, despertador y sincronización oficial de feriados nacionales peruanos.
+
+- **Repositorio Oficial**: [`franklingutierrez/Agenda-Digital`](https://github.com/franklingutierrez/Agenda-Digital)
+- **Application ID**: `com.aistudio.agendadigital.vpxtzq`
+- **Versión Inicial**: `1.0` (versionCode `1`)
 
 ---
 
@@ -15,7 +19,7 @@ Una moderna aplicación Android desarrollada en **Kotlin** y **Jetpack Compose**
 ### 2. 🇵🇪 Calendario Oficial de Feriados de Perú
 - **Cálculo Automático y Autónomo**: Motor nativo `PeruHolidaysProvider` que calcula automáticamente los 16 feriados oficiales según las leyes peruanas (incluyendo las leyes *Ley 31701 Batalla de Arica*, *Ley 31822 Fuerza Aérea*, *Ley 31530 Batalla de Junín*, *Ley 31381 Batalla de Ayacucho*).
 - **Semana Santa Dinámica**: Algoritmo matemático astronómico de *Meeus/Jones/Butcher* para determinar con exactitud Jueves y Viernes Santo en cualquier año.
-- **Distintivo en Calendario**: Días feriados destacados con el ícono patrio 🇵🇪 y banner de cuenta regresiva en el panel principal.
+- **Distintivo en Calendario**: Días feriados destacados con el distintivo patrio 🇵🇪 y banner con cuenta regresiva en el panel principal.
 
 ### 3. ⏰ Despertador Inteligente y Recordatorios con Sonido
 - Alarma con reproducción continua (`USAGE_ALARM`), patrón de vibración, WakeLock y compatibilidad con timbres MP3 personalizados.
@@ -27,78 +31,65 @@ Una moderna aplicación Android desarrollada en **Kotlin** y **Jetpack Compose**
 - **17 Iconos Contextuales**: Trabajo, Salud, Personal, Estudio, Finanzas, Hogar, Compras, Viajes, Comida, Arte, Lectura, Música, Computación/Código, Favoritos y Prioridad Alta.
 
 ### 5. 🔄 Actualizaciones Automáticas (OTA vía GitHub Releases)
-- La aplicación cuenta con un módulo integrado (`AppUpdateManager`) que consulta automáticamente la API de GitHub al abrir la app.
-- Cuando publicas una nueva versión en GitHub, los usuarios reciben una notificación con el cuadro de diálogo para descargar e instalar el APK actualizado directamente con un solo toque.
-
-### 6. 📅 Integración con Google Calendar
-- Sincronización mediante el contrato de calendario de Android y generación de archivos estándar `.ics` compartibles con Google Calendar, Outlook y Apple Calendar.
-
-### 7. 📱 Interfaz Adaptativa (Móvil, Tablet y Escritorio)
-- Soporte para **Window Size Classes**: usa `NavigationBar` en pantallas compactas y se transforma automáticamente en `NavigationRail` lateral en tablets o emuladores de escritorio.
-- Modo oscuro automático según el sistema o conmutable manualmente desde la cabecera del panel.
+- La aplicación cuenta con un módulo integrado (`AppUpdateManager`) que consulta la API de GitHub del repositorio `franklingutierrez/Agenda-Digital`.
+- **Aviso Exclusivo para Versiones Superiores**: La app compara numéricamente las versiones semánticas (por ejemplo `1.10` es reconocido correctamente como superior a `1.9`). Si la versión es igual, inferior o el tag es inválido, no se muestra ningún aviso.
+- **Verificación de Asset APK**: Solo notifica cuando el Release contiene un APK descargable proveniente del repositorio legítimo.
+- **Descarga e Instalación Segura en Android**: La descarga se realiza de forma estándar y transparente a través del navegador web del dispositivo. Por razones de seguridad del sistema operativo Android, **no existe instalación silenciosa ni ejecución en segundo plano con la app cerrada**: Android solicitará siempre la confirmación del usuario para permitir la instalación de fuentes desconocidas/actualizar la app.
 
 ---
 
-## 🚀 Cómo Subir y Publicar la App en GitHub
+## 🔐 Configuración de Secrets en GitHub (Obligatorio para Release)
 
-### Paso 1: Inicializar el repositorio Git local y subir el código
-En tu terminal local o entorno de desarrollo:
+Para que el flujo de compilación y publicación automática (`release.yml`) en GitHub Actions pueda firmar el APK de producción, debes configurar los siguientes secretos en tu repositorio de GitHub (**Settings > Secrets and variables > Actions > Repository secrets**):
 
-```bash
-# 1. Inicializar git si no lo tienes
-git init
+| Nombre del Secret | Descripción |
+| :--- | :--- |
+| `ANDROID_KEYSTORE_BASE64` | Archivo Keystore de subida (`.jks`) codificado en Base64. |
+| `STORE_PASSWORD` | Contraseña del almacén de claves (keystore). |
+| `KEY_PASSWORD` | Contraseña de la clave privada (`upload`). |
 
-# 2. Agregar todos los archivos
-git add .
+> ⚠️ **Importante**:
+> 1. Para que las personas que instalen la app puedan actualizarla sobre la versión anterior sin errores de *"Conflicto de firma / No se pudo instalar el paquete"*, **todas las versiones futuras deben firmarse exactamente con la misma clave y el mismo Keystore**.
+> 2. Si alguno de estos tres secretos no está configurado, el workflow fallará de forma temprana y controlada con un mensaje claro, evitando generar releases rotos o no firmados.
 
-# 3. Crear el primer commit
-git commit -m "feat: versión inicial de Agenda Digital Inteligente Perú v1.0"
+---
 
-# 4. Vincular con tu repositorio de GitHub (reemplaza con tu usuario)
-git branch -M main
-git remote add origin https://github.com/dragontec691/agenda-digital-peru.git
+## 🚀 Flujo de Trabajo desde AI Studio
 
-# 5. Subir a GitHub
-git push -u origin main
+Para desarrollar y publicar nuevas versiones usando AI Studio y GitHub:
+
+### Paso 1: Realizar cambios en AI Studio
+- Modifica el código o solicita mejoras al asistente de AI Studio.
+
+### Paso 2: Incrementar la versión en `app/build.gradle.kts`
+Cuando decidas publicar una nueva versión para los usuarios:
+```kotlin
+android {
+  defaultConfig {
+    versionCode = 2        // Incrementar en 1 cada vez
+    versionName = "1.1"    // Incrementar versión semántica (ej. 1.1, 1.2, 2.0)
+  }
+}
 ```
 
----
+### Paso 3: Sincronizar con GitHub desde AI Studio
+- En el menú superior de AI Studio, selecciona la opción para sincronizar / hacer push de tus cambios al repositorio conectado `franklingutierrez/Agenda-Digital` en la rama `main`.
 
-## 📦 Sistema de Notificación y Actualización Automática a Usuarios
-
-El sistema funciona con **GitHub Releases** y **GitHub Actions**:
-
-### ¿Cómo enviar una actualización automática a las personas que instalaron la app?
-
-1. **Incrementa la versión en `app/build.gradle.kts`**:
-   ```kotlin
-   versionCode = 2
-   versionName = "1.1"
-   ```
-
-2. **Crea un Tag y súbelo a GitHub**:
-   ```bash
-   git add app/build.gradle.kts
-   git commit -m "release: versión 1.1 con nuevas mejoras"
-   git tag v1.1
-   git push origin main --tags
-   ```
-
-3. **Compilación y Entrega Automática**:
-   - El flujo de trabajo en `.github/workflows/release.yml` compilará el archivo APK automáticamente y creará el Release oficial en GitHub.
-   - Tan pronto como los usuarios abran la aplicación, el `AppUpdateManager` detectará la versión `1.1` mediante la API de GitHub y desplegará en pantalla el cuadro **"¡Nueva Actualización! Versión 1.1 disponible"** con las notas de la versión y el botón **"Actualizar APK"** para instalar la actualización al instante.
+### Paso 4: Crear el Tag de Release en GitHub
+Una vez que el commit esté en GitHub:
+1. En GitHub, ve a **Releases > Draft a new release** (o vía terminal con `git tag v1.1 && git push origin v1.1`).
+2. El tag **debe coincidir exactamente con el `versionName`** precedido de una `v` (ejemplo: para `versionName = "1.1"` el tag debe ser `v1.1`).
+3. El workflow `release.yml` se disparará automáticamente:
+   - Descarga Android SDK 36.1 y Gradle 9.3.1.
+   - Valida la presencia de los Secrets requeridos.
+   - Materializa el Keystore en un archivo temporal seguro en el runner.
+   - Compila `:app:assembleRelease`.
+   - Verifica la firma digital con `apksigner verify`.
+   - Publica el Release en GitHub con el archivo `app-release.apk` adjunto.
 
 ---
 
-## 🛠️ Requisitos de Compilación
-- **Android Studio Ladybug / Meerkat** o superior.
-- **JDK 17**.
-- **Android SDK Min**: API 24 (Android 7.0 Nougat).
-- **Android SDK Target**: API 36.
-- **Room Database v2** con SQLite nativo.
-- **Jetpack Compose + Material 3**.
+## 🛠️ Exportación de APK y Claves en AI Studio
 
----
-
-## 📄 Licencia
-Proyecto distribuido bajo la licencia MIT. Desarrollado con ❤️ para impulsar la productividad y organización.
+- **Generación de APK en AI Studio**: AI Studio cuenta con la opción de generar APK / AAB para pruebas e instalación directa desde su menú de exportación y configuración.
+- **Claves de Firma**: Las claves de firma para publicación de producción en tiendas o en CI/CD externo se gestionan mediante variables seguras de entorno (`KEYSTORE_PATH`, `STORE_PASSWORD`, `KEY_PASSWORD`) o secrets de la plataforma. Para mantener la seguridad y privacidad del proyecto, las credenciales privadas y claves maestras nunca deben comprometerse ni exponerse en el código fuente ni en el historial de Git.

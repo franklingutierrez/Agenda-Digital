@@ -23,27 +23,88 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
-      - name: Make Gradlew Executable
-        run: chmod +x gradlew || true
+      - name: Set up Android SDK 36.1
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Validate Release Secrets
+        run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "::error::Falta el secreto requerido 'ANDROID_KEYSTORE_BASE64' en los Secrets del repositorio GitHub."
+            exit 1
+          fi
+          if [ -z "${{ secrets.STORE_PASSWORD }}" ]; then
+            echo "::error::Falta el secreto requerido 'STORE_PASSWORD' en los Secrets del repositorio GitHub."
+            exit 1
+          fi
+          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "::error::Falta el secreto requerido 'KEY_PASSWORD' en los Secrets del repositorio GitHub."
+            exit 1
+          fi
+          echo "Todos los secretos de firma para release están configurados."
+
+      - name: Materialize Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          KEYSTORE_FILE="${RUNNER_TEMP}/my-upload-key.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
+          echo "Keystore materializado en $KEYSTORE_FILE"
+
+      - name: Validate Tag Matches versionName (Tags Only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Extraer versionName de app/build.gradle.kts
+          APP_VERSION=$(grep -E 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n 1 | sed -E 's/.*versionName\s*=\s*"([^"]+)".*/\1/')
+          echo "Tag version: $TAG_VERSION | app/build.gradle.kts versionName: $APP_VERSION"
+          if [ "$TAG_VERSION" != "$APP_VERSION" ]; then
+            echo "::error::El tag de Git 'v$TAG_VERSION' no coincide con versionName '$APP_VERSION' en app/build.gradle.kts. Abortando release."
+            exit 1
+          fi
+          echo "El tag coincide exitosamente con versionName: $APP_VERSION"
 
       - name: Build Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --stacktrace || ./gradlew assembleDebug --stacktrace
+          gradle :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Locate Output APK
-        id: find_apk
+      - name: Verify APK Signature with apksigner
         run: |
-          APK_PATH=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
-          echo "Found APK at: $APK_PATH"
-          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          APK_FILE="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK_FILE" ]; then
+            echo "::error::No se encontró el APK de release en $APK_FILE"
+            exit 1
+          fi
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+          if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "::error::No se pudo localizar apksigner en el Android SDK."
+            exit 1
+          fi
+          echo "Verificando firma con $APKSIGNER..."
+          $APKSIGNER verify --verbose "$APK_FILE"
+          echo "Firma del APK de release verificada exitosamente."
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: ${{ steps.find_apk.outputs.apk_path }}
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release (Tags Only)
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: app/build/outputs/apk/release/app-release.apk
           name: Agenda Digital Perú - ${{ github.ref_name }}
           draft: false
           prerelease: false

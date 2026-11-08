@@ -66,8 +66,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
     fun checkForAppUpdates() {
         viewModelScope.launch {
             val updateInfo = com.example.util.AppUpdateManager.checkForUpdates(
-                currentVersionCode = 1,
-                currentVersionName = "1.0"
+                currentVersionName = com.example.BuildConfig.VERSION_NAME
             )
             if (updateInfo != null && updateInfo.hasUpdate) {
                 _uiState.update { it.copy(availableUpdate = updateInfo) }
