@@ -1,0 +1,6 @@
+{
+  "name": "Agenda Digital",
+  "description": "Agenda digital con recordatorios inteligentes, etiquetas de colores pastel, despertador y feriados de Perú",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
