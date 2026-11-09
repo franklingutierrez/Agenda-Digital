@@ -9,6 +9,14 @@ enum class TaskPriority {
     HIGH
 }
 
+enum class TaskRecurrence(val label: String, val icon: String) {
+    NONE("No se repite", "⛔"),
+    DAILY("Diaria", "🔄"),
+    WEEKLY("Semanal", "📅"),
+    MONTHLY("Mensual", "🗓️"),
+    YEARLY("Anual", "🎂")
+}
+
 enum class EisenhowerQuadrant(val title: String, val subtitle: String, val emoji: String) {
     DO_FIRST("Hacer Ahora", "Urgente e Importante", "🔥"),
     SCHEDULE("Planificar", "Importante, No Urgente", "💎"),
@@ -35,5 +43,6 @@ data class TaskEntity(
     val reminderMinutesBefore: Int = 15, // 0 = exact time, 15 = 15 min before, -1 = no reminder
     val kanbanStatus: String = "TODO", // "TODO", "IN_PROGRESS", "DONE"
     val eisenhowerQuadrant: String = "DO_FIRST", // "DO_FIRST", "SCHEDULE", "DELEGATE", "ELIMINATE"
+    val recurrenceInterval: String = "NONE", // "NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"
     val createdAtMillis: Long = System.currentTimeMillis()
 )

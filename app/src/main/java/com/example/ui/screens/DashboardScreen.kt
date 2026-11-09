@@ -81,7 +81,15 @@ fun DashboardScreen(
         (it.startMillis in todayStart..todayEnd) || (it.isAllDay && it.endMillis >= todayStart && it.startMillis <= todayEnd)
     }
 
-    val todayTasks = uiState.filteredTasks
+    // Tareas vencidas o programadas para hoy
+    val todayTasks = uiState.filteredTasks.filter {
+        it.dueDateMillis <= todayEnd
+    }
+
+    // Tareas programadas anticipadamente a futuro
+    val upcomingTasks = uiState.filteredTasks.filter {
+        it.dueDateMillis > todayEnd
+    }
 
     val dateFormatter = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale("es", "PE"))
     val dateString = today.format(dateFormatter).replaceFirstChar { it.uppercase() }
@@ -355,6 +363,37 @@ fun DashboardScreen(
                 }
             } else {
                 items(todayTasks, key = { it.id }) { task ->
+                    val label = uiState.labels.find { it.id == task.labelId }
+                    TaskItemCard(
+                        task = task,
+                        label = label,
+                        onToggleCompleted = { viewModel.toggleTask(task) },
+                        onEdit = { viewModel.openCreateTaskDialog(task) },
+                        onDelete = { viewModel.deleteTask(task.id) },
+                        onAdvanceKanban = { viewModel.advanceTaskKanban(task) }
+                    )
+                }
+            }
+
+            // Sección: Tareas Programadas a Futuro
+            if (upcomingTasks.isNotEmpty()) {
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    ) {
+                        Text(
+                            text = "📅 Próximas Tareas Programadas (${upcomingTasks.size})",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
+                items(upcomingTasks, key = { it.id }) { task ->
                     val label = uiState.labels.find { it.id == task.labelId }
                     TaskItemCard(
                         task = task,

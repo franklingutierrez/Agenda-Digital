@@ -251,6 +251,9 @@ fun CalendarScreen(
                                                 val hasEvents = uiState.events.any {
                                                     (it.startMillis in dStart..dEnd) || (it.isAllDay && it.endMillis >= dStart && it.startMillis <= dEnd)
                                                 }
+                                                val hasTasks = uiState.tasks.any {
+                                                    it.dueDateMillis in dStart..dEnd
+                                                }
 
                                                 val cellBg = when {
                                                     isSelected -> MaterialTheme.colorScheme.primary
@@ -292,13 +295,25 @@ fun CalendarScreen(
 
                                                         if (holiday != null) {
                                                             Text(text = "🇵🇪", fontSize = 8.sp)
-                                                        } else if (hasEvents && !isSelected) {
-                                                            Box(
-                                                                modifier = Modifier
-                                                                    .size(4.dp)
-                                                                    .clip(CircleShape)
-                                                                    .background(MaterialTheme.colorScheme.primary)
-                                                            )
+                                                        } else if (!isSelected && (hasEvents || hasTasks)) {
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                if (hasEvents) {
+                                                                    Box(
+                                                                        modifier = Modifier
+                                                                            .size(3.5.dp)
+                                                                            .clip(CircleShape)
+                                                                            .background(MaterialTheme.colorScheme.primary)
+                                                                    )
+                                                                }
+                                                                if (hasTasks) {
+                                                                    Box(
+                                                                        modifier = Modifier
+                                                                            .size(3.5.dp)
+                                                                            .clip(CircleShape)
+                                                                            .background(MaterialTheme.colorScheme.secondary)
+                                                                    )
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }

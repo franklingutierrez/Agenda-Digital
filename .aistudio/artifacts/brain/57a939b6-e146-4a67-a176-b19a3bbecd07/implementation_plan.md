@@ -1,133 +1,133 @@
-# Agenda Digital Inteligente: Plan de Implementación
+# 📅 Programación Anticipada de Tareas y Tareas Recurrentes
 
-Una aplicación integral de productividad y organización personal en Jetpack Compose, con panel diario interactivo, gestión de eventos y tareas con etiquetas de colores pastel, despertador integrado, notificaciones inteligentes, feriados oficiales de Perú y compatibilidad multiplataforma y adaptativa.
+Este plan detalla la arquitectura, modelo de datos y diseño de experiencia de usuario para permitir programar tareas para cualquier día en el futuro (con selector de fecha y hora), así como configurar tareas periódicas o recurrentes (**Diaria**, **Semanal**, **Mensual**, **Anual** o **Sin repetición**). Al completar una tarea recurrente, el sistema avanzará automáticamente la fecha de vencimiento al siguiente ciclo y la restablecerá en estado *"Por Hacer"* con notificación de confirmación, manteniéndola visible en la fecha seleccionada en el **Calendario** y en el **Panel Diario**.
 
-### User Review & Critical Decisions
+---
+
+## 🎯 Decisiones Críticas y Preferencias Confirmadas
 
 > [!IMPORTANT]
-> **Decisiones de Arquitectura y Configuración**:
-> - **Persistencia y Base de Datos**: Implementaremos **Room Database** con soporte reactivo mediante Kotlin Coroutines `Flow`, permitiendo almacenamiento local seguro, inmediato y confiable con exportación/importación de respaldo y sincronización con el calendario del dispositivo (`CalendarContract` / Google Calendar).
-> - **Etiquetas Personalizables de Colores**: Sistema dinámico de etiquetas (ej. *Trabajo*, *Salud*, *Personal*, *Estudio*, *Finanzas*) con una paleta de tonos pasteles personalizable y selector de iconos, visibles en tarjetas de eventos, tareas y filtros rápidos en el panel.
-> - **Feriados Oficiales de Perú**: Catálogo precargado de feriados nacionales peruanos (Ley 31530 y decretos vigentes: Año Nuevo, Semana Santa, Día de la Bandera, Fiestas Patrias, Santa Rosa de Lima, Batalla de Ayacucho, Navidad, etc.) con cálculo automático y distintivo visual en el calendario.
-> - **Despertador y Notificaciones**: Servicio de alarmas programadas con `AlarmManager`, notificaciones push locales con canales específicos de recordatorio y pantalla de despertador con opciones de posponer (*Snooze*) y descartar con resumen matutino.
+> - **Tipo de Recurrencia**: Configurable en opciones **Ninguna**, **Diaria**, **Semanal**, **Mensual** y **Anual**.
+> - **Comportamiento al Completar**: Al marcar o completar una tarea recurrente, el sistema registra el logro, reproduce el sonido de confirmación, suma los puntos de productividad (XP) y **avanza automáticamente su fecha al siguiente ciclo programado** (reabriendo el ciclo en *"Por Hacer"*). Para tareas no recurrentes, permanece en *"Completada"*.
+> - **Visualización en Calendario y Panel**: 
+>   1. En el **Calendario**: los días que tengan tareas programadas mostrarán un indicador visual distintivo junto con los eventos, y al seleccionar cualquier día se listarán las tareas programadas para esa fecha específica.
+>   2. En el **Panel Principal (Dashboard)**: mostrará las tareas correspondientes a la fecha seleccionada o de la jornada, con acceso a selector de fecha rápido (*Hoy*, *Mañana*, *Esta semana*, etc.).
 
 ---
 
-### 1. Overview & Core Concept
-
-- **Qué hace**: Proporciona un centro de control diario donde el usuario puede planificar su jornada, gestionar eventos en vistas mensual, semanal y diaria, ejecutar y marcar tareas con subtareas y prioridades, configurar alarmas despertadoras y recibir alertas oportunas, todo con estética pastel y feriados peruanos integrados.
-- **Público Objetivo**: Profesionales, estudiantes y cualquier persona que busque organizar su tiempo con claridad mental, seguimiento de productividad y control sobre sus compromisos.
-- **Valor Principal**: Combina en una única interfaz cohesiva la agenda de eventos, la lista de tareas procesable de alta productividad, el despertador matutino y la sincronización con el calendario oficial peruano, evitando la fragmentación entre múltiples aplicaciones.
-
----
-
-### 2. User Experience & Visual Design
-
-#### Flujos de Usuario Clave
-1. **Dashboard Diario (Panel Intuitivo)**:
-   - Saludo contextual según la hora del día (Buenos días / tardes / noches).
-   - Próximo evento destacado con contador regresivo.
-   - Barra de progreso diario de tareas ("4 de 6 tareas completadas - 67%").
-   - Fila de filtros rápidos por etiqueta (Todas, Trabajo, Salud, Personal).
-   - Acceso rápido a crear evento, tarea o alarma.
-2. **Calendario y Feriados de Perú**:
-   - Vistas interactiva mensual y semanal con indicadores de puntos de colores según las etiquetas del evento.
-   - Destaque especial en días de feriado nacional peruano con badge patrio/oficial e información conmemorativa.
-   - Integración para sincronizar y exportar eventos a Google Calendar / Calendario del sistema.
-3. **Gestor de Tareas de Alta Productividad**:
-   - Checkbox interactivo para marcar tareas al instante con micro-animación de tachado y confetti/retroalimentación.
-   - Nivel de prioridad (Alta, Media, Baja) con indicadores visuales sutiles.
-   - Filtro por estado (Pendientes, Completadas) y por fecha de vencimiento.
-4. **Despertador y Recordatorios Inteligentes**:
-   - Lista de alarmas con interruptor activo/inactivo, selector de hora en formato 12/24h, días repetitivos y tono.
-   - Notificación de recordatorio 15 o 30 minutos antes de citas importantes.
-   - Pantalla completa de alarma matutina que muestra el clima y el resumen de compromisos del día al apagarse.
-5. **Gestor de Etiquetas**:
-   - Creación y edición de categorías personalizadas con selector de paleta pastel y nombre personalizado.
-
-#### Identidad Visual y Tema (Paleta Pastel & Modo Oscuro)
-- **Modo Claro (Pastel Sereno)**:
-  - Fondo: Blanco perla suave (`#FAF9F6`) y lavanda muy tenue (`#F4F3FA`).
-  - Primario: Lavanda profundo suave (`#7C6DAF`).
-  - Acentos pasteles para etiquetas:
-    * Trabajo / Estudio: Azul cielo pastel (`#93C5FD` / texto `#1E40AF`)
-    * Salud / Bienestar: Menta pastel (`#86EFAC` / texto `#166534`)
-    * Personal / Hogar: Durazno pastel (`#FDBA74` / texto `#9A3412`)
-    * Importante / Urgente: Rosa coral pastel (`#FCA5A5` / texto `#991B1B`)
-    * Creativo / Ocio: Lavanda pastel (`#C4B5FD` / texto `#5B21B6`)
-- **Modo Oscuro (Dark Pastel / Slate Elegante)**:
-  - Fondo: Grafito suave nocturno (`#12131A`).
-  - Superficies de tarjeta: Azul grisáceo oscuro (`#1E202B`).
-  - Colores de acento ajustados en luminancia para mantener legibilidad sin fatiga visual.
-  - Soporte automático según el sistema (`isSystemInDarkTheme()`) con alternancia manual en ajustes.
-- **Tipografía y Jerarquía**:
-  - Títulos limpios y modernos con peso semi-bold.
-  - Números legibles en el calendario y reloj despertador.
-  - Tamaños accesibles respetando escala de fuente del sistema (`sp`).
-
----
-
-### 3. Key Product Decisions & Trade-Offs
-
-- **Decisión 1: Integración con Calendarios Externos (Google Calendar)**
-  - *Enfoque*: Uso de los proveedores del sistema de Android (`CalendarContract.Events`) y archivo universal iCalendar (.ics) para exportación/importación bidireccional.
-  - *Razón*: Permite que los eventos se sincronicen directamente con la cuenta de Google vinculada en el dispositivo sin exigir configuración de backend externa ni dependencias frágiles.
-  - *Alternativas consideradas*: API directa REST de Google Calendar (requiere credenciales complejas de consola GCP por usuario).
-- **Decisión 2: Sistema de Alarmas y Notificaciones**
-  - *Enfoque*: Implementación de `AlarmManager` con `BroadcastReceiver` (`AlarmReceiver`) y canales de notificación de alta prioridad para garantizar que el despertador suene en el momento exacto.
-  - *Razón*: Es el mecanismo nativo estándar de Android para despertadores y alertas confiables en segundo plano.
-- **Decisión 3: Adaptabilidad de Pantalla (Móvil, Tablet, Escritorio)**
-  - *Enfoque*: Diseño responsivo con `BoxWithConstraints` y diseño canónico M3: `NavigationBar` inferior en pantallas compactas (teléfonos) y `NavigationRail` lateral en pantallas medianas/expandidas (tablets, emulador en navegador o modo escritorio).
-  - *Razón*: Cumple con las directrices de diseño adaptable y asegura que la aplicación se vea impecable tanto en el teléfono como en la vista web de AI Studio.
-
----
-
-### 4. Technical Architecture & Data Strategy
+## 1. Experiencia de Usuario y Flujo de Interacción
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Jetpack Compose UI Layer                        │
+│                        NUEVA / EDITAR TAREA                            │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │  DashboardScreen │  │  CalendarScreen  │  │     TasksScreen      │  │
-│  │ (Resumen/Filtros)│  │ (Mes/Semana/Perú)│  │  (Check/Prioridad)   │  │
-│  └────────┬─────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-│           │                     │                       │              │
-│  ┌────────┴─────────┐  ┌────────┴─────────┐  ┌──────────┴───────────┐  │
-│  │   AlarmsScreen   │  │   LabelsSheet    │  │    SettingsSheet     │  │
-│  │  (Despertador)   │  │ (Gestión Colores)│  │ (Modo Oscuro/Sync)   │  │
-│  └────────┬─────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-└───────────┼─────────────────────┼───────────────────────┼──────────────┘
-            ▼                     ▼                       ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        AgendaViewModel & State                         │
-│  - uiState: StateFlow<AgendaUiState>                                   │
-│  - Métodos: toggleTask, addEvent, saveLabel, toggleAlarm, syncCalendar │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                           Repository Layer                             │
-│  - AgendaRepository (Eventos, Tareas, Etiquetas, Alarmas)              │
-│  - PeruHolidaysProvider (Feriados oficiales peruanos calculados)       │
-│  - GoogleCalendarSyncManager (Intent/Contract sincronización)          │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                    Room Database & Android Framework                   │
-│  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │      AgendaDao       │  │   AlarmManager   │  │   Notification   │  │
-│  │ (Events/Tasks/Labels)│  │ (BroadcastRecv)  │  │     Manager      │  │
-│  └──────────────────────┘  └──────────────────┘  └──────────────────┘  │
+│ Título: [ Pagar servicios de oficina / Declaración mensual ]          │
+│                                                                        │
+│ 📅 FECHA DE PROGRAMACIÓN ANTICIPADA                                    │
+│ [ 📆 Seleccionar Fecha: 15 de Noviembre, 2026 ] [ ⏰ Hora: 09:30 AM ]  │
+│ Botones rápidos: [ Hoy ] [ Mañana ] [ Próx. Lunes ] [ En 1 mes ]      │
+│                                                                        │
+│ 🔁 REPETICIÓN / RECURRENCIA                                            │
+│ [ Ninguna ]  [ 🔄 Diaria ]  [ 📅 Semanal ]  [ 🗓️ Mensual ]  [ 🎂 Anual ]│
+│                                                                        │
+│ 🎯 Matriz Eisenhower: [ 🔥 Hacer Ya ] [ 💎 Planificar ] ...            │
+│ 🏷️ Etiqueta Pastel:    [ Finanzas ]   [ Trabajo ] ...                   │
+│ ⏰ Recordatorio:       [ 15 min antes ] [ Exacto ] ...                 │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Modelo de Datos Principal
-- **LabelEntity**: `id`, `name`, `colorHex`, `iconName`. (Predefinidas: Trabajo, Salud, Personal, Estudio, etc.).
-- **TaskEntity**: `id`, `title`, `description`, `labelId`, `dueDate`, `priority`, `isCompleted`, `reminderMinutesBefore`.
-- **EventEntity**: `id`, `title`, `description`, `labelId`, `startTime`, `endTime`, `location`, `isAllDay`, `isPeruHoliday`.
-- **AlarmEntity**: `id`, `hour`, `minute`, `label`, `isEnabled`, `repeatDays` (Lunes a Domingo), `vibrate`.
-- **PeruHoliday**: `date`, `name`, `description`, `lawReference`.
+1. **Creación o Edición de Tarea**:
+   - En `CreateTaskDialog`, el usuario puede elegir cualquier fecha futura mediante un selector de fecha amigable (Material DatePicker dialog o selector visual nativo) y hora de vencimiento.
+   - Cuenta con atajos rápidos: **Hoy**, **Mañana**, **Próxima Semana** y **En 1 Mes**.
+   - Selector visual de recurrencia en píldoras: `NONE` (Sin repetición), `DAILY` (Diaria), `WEEKLY` (Semanal), `MONTHLY` (Mensual), `YEARLY` (Anual).
 
-#### Notificaciones y Permisos
-- Permiso `POST_NOTIFICATIONS` (Android 13+) y `SCHEDULE_EXACT_ALARM`.
-- Canal de notificación: `recordatorios_canal` (Recordatorios de tareas y eventos) y `alarmas_canal` (Despertador con sonido y vibración continua).
+2. **Visualización y Organización Temporal**:
+   - **En el Calendario**: Cada celda mensual/semanal/diaria detecta tanto eventos como tareas programadas. Al tocar un día específico, la agenda del día lista las tareas asignadas a esa fecha exacta con un badge de recurrencia (ej. `🗓️ Mensual`).
+   - **En el Dashboard**: Muestra las tareas para la fecha activa (con opción de alternar entre *Hoy* y la fecha seleccionada en el calendario), además de un contador de tareas futuras programadas.
+
+3. **Ciclo de Completado Inteligente**:
+   - Al completar una tarea:
+     - Si `recurrenceInterval == NONE`: Pasa a `DONE` (Completada).
+     - Si es recurrente (`DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`): Se reproduce el sonido de confirmación, se emite la notificación de logro, y su `dueDateMillis` se proyecta exactamente al siguiente período (+1 día, +1 semana, +1 mes o +1 año manteniendo la hora programada), volviendo al estado `TODO` para el siguiente ciclo.
+
+---
+
+## 2. Modelo de Datos y Arquitectura Técnica
+
+```
+┌─────────────────────────┐          ┌───────────────────────────┐
+│       TaskEntity        │          │   RecurrenceInterval      │
+├─────────────────────────┤          ├───────────────────────────┤
+│ id: Long                │          │ NONE    ("No se repite")  │
+│ title: String           │          │ DAILY   ("Diario")        │
+│ dueDateMillis: Long     │◄─────────┤ WEEKLY  ("Semanal")       │
+│ recurrenceInterval: Str │          │ MONTHLY ("Mensual")       │
+│ recurrenceEndMillis: L? │          │ YEARLY  ("Anual")         │
+│ kanbanStatus: String    │          └───────────────────────────┘
+│ isCompleted: Boolean    │
+└───────────┬─────────────┘
+            │
+            ▼
+┌─────────────────────────┐
+│     AgendaViewModel     │ ───► cycleTaskState(task)
+│  - calculateNextDueDate │         └─► Si es recurrente: avanza período y resetea TODO
+│  - scheduleTaskReminder │
+└─────────────────────────┘
+```
+
+### Modificaciones en `TaskEntity.kt`:
+```kotlin
+enum class TaskRecurrence(val label: String, val icon: String) {
+    NONE("No se repite", "⛔"),
+    DAILY("Diaria", "🔄"),
+    WEEKLY("Semanal", "📅"),
+    MONTHLY("Mensual", "🗓️"),
+    YEARLY("Anual", "🎂")
+}
+
+// En TaskEntity:
+val recurrenceInterval: String = "NONE", // NONE, DAILY, WEEKLY, MONTHLY, YEARLY
+```
+
+### Cálculo del Siguiente Ciclo:
+Uso de `java.time.Instant`, `ZoneId.systemDefault()`, `LocalDateTime`:
+- `DAILY`: `currentDateTime.plusDays(1)`
+- `WEEKLY`: `currentDateTime.plusWeeks(1)`
+- `MONTHLY`: `currentDateTime.plusMonths(1)` (maneja fin de mes automáticamente como 31 de enero -> 28/29 de febrero)
+- `YEARLY`: `currentDateTime.plusYears(1)`
+
+---
+
+## 3. Componentes y Pantallas a Actualizar
+
+1. **`TaskEntity.kt` y `AppDatabase.kt`**:
+   - Agregar el campo `recurrenceInterval` a `TaskEntity`.
+   - Incrementar versión de base de datos a `3` en `AppDatabase` con `fallbackToDestructiveMigration()`.
+
+2. **`CreateTaskDialog.kt`**:
+   - Añadir selector de fecha (con fecha editable, diálogo de calendario `DatePickerDialog` de Android o Compose M3) y atajos (*Hoy*, *Mañana*, *En 7 días*, *En 30 días*).
+   - Añadir selector de hora precisa.
+   - Añadir selector de recurrencia en píldoras atractivas M3 (`No repite`, `Diaria`, `Semanal`, `Mensual`, `Anual`).
+
+3. **`TaskItemCard.kt`**:
+   - Mostrar indicador de fecha de vencimiento amigable (ej. *"Hoy a las 4:00 PM"*, *"Mañana a las 10:00 AM"*, *"15 nov a las 9:00 AM"*).
+   - Mostrar distintivo de recurrencia si aplica (ej. `🔄 Mensual`).
+
+4. **`AgendaViewModel.kt`**:
+   - Función `advanceRecurrentTask(task: TaskEntity)`: calcula la próxima fecha, actualiza la alarma/recordatorio programado y resetea el estado a `TODO`.
+   - Reprogramación exacta mediante `AlarmScheduler` con el nuevo timestamp.
+
+5. **`CalendarScreen.kt` & `DashboardScreen.kt`**:
+   - En `CalendarScreen`: la cuadrícula del mes mostrará un indicador de puntos o tareas en las fechas que tengan tareas programadas (además de los eventos).
+   - En la sección "Agenda del Día", se mostrarán las tareas que vencen en la fecha seleccionada.
+
+6. **Pruebas Unitarias (`AppVersionUnitTest.kt` o `TaskRecurrenceUnitTest.kt`)**:
+   - Pruebas para cálculo correcto de fechas siguientes (diaria, semanal, fin de mes mensual y bisiestos anuales).
+
+---
+
+## 4. Verificación y Calidad
+- Ejecutar compilación con `compile_applet`.
+- Ejecutar suite de pruebas con `gradle :app:testDebugUnitTest`.
+- Probar la creación de una tarea para una fecha futura y verificar que aparece en el día correspondiente en el calendario.
+- Completar una tarea mensual y verificar que avanza automáticamente al mes siguiente.

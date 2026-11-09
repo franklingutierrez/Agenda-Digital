@@ -20,7 +20,7 @@ import java.time.ZoneId
 
 @Database(
     entities = [LabelEntity::class, TaskEntity::class, EventEntity::class, AlarmEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -276,9 +276,36 @@ fun TaskItemCard(
                         )
                     }
 
-                    // Hora de vencimiento
-                    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                    val timeString = timeFormat.format(Date(task.dueDateMillis))
+                    // Badge de tarea recurrente (si aplica)
+                    if (task.recurrenceInterval != "NONE") {
+                        val (recIcon, recText) = when (task.recurrenceInterval) {
+                            "DAILY" -> "🔄" to "Diaria"
+                            "WEEKLY" -> "📅" to "Semanal"
+                            "MONTHLY" -> "🗓️" to "Mensual"
+                            "YEARLY" -> "🎂" to "Anual"
+                            else -> "🔁" to task.recurrenceInterval
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+                                )
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "$recIcon $recText",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                ),
+                                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+                            )
+                        }
+                    }
+
+                    // Fecha y hora amigable de vencimiento programado
+                    val friendlyDateString = com.example.util.TaskRecurrenceHelper.formatFriendlyDueDate(task.dueDateMillis)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -294,7 +321,7 @@ fun TaskItemCard(
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = timeString,
+                            text = friendlyDateString,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

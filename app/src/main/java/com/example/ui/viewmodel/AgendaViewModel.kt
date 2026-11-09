@@ -97,7 +97,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(themeMode = mode) }
     }
 
-    // Tareas con ciclo progresivo: Por Hacer ➔ En Progreso ➔ Completada
+    // Tareas con ciclo progresivo: Por Hacer ➔ En Progreso ➔ Completada (con avance automático de recurrencia)
     fun toggleTask(task: TaskEntity) {
         cycleTaskState(task)
     }
@@ -105,22 +105,57 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
     fun cycleTaskState(task: TaskEntity) {
         viewModelScope.launch {
             val currentStatus = if (task.isCompleted && task.kanbanStatus != "DONE") "DONE" else task.kanbanStatus
-            val (nextStatus, isCompleted) = when (currentStatus) {
-                "TODO" -> "IN_PROGRESS" to false
+            when (currentStatus) {
+                "TODO" -> {
+                    repository.updateTask(task.copy(kanbanStatus = "IN_PROGRESS", isCompleted = false))
+                }
                 "IN_PROGRESS" -> {
                     // Sonido y notificación de confirmación de tarea completada
                     AlarmSoundPlayer.playTaskReminder(getApplication<Application>())
-                    NotificationHelper.showTaskReminderNotification(
-                        getApplication<Application>(),
-                        task.id,
-                        "¡Tarea Completada con Éxito! 🎉",
-                        "Has finalizado '${task.title}'. +15 Puntos de Productividad"
-                    )
-                    "DONE" to true
+                    
+                    val isRecurrent = task.recurrenceInterval != "NONE"
+                    if (isRecurrent) {
+                        val nextDueDate = com.example.util.TaskRecurrenceHelper.calculateNextDueDate(
+                            task.dueDateMillis,
+                            task.recurrenceInterval
+                        )
+                        val recurrenceLabel = when (task.recurrenceInterval) {
+                            "DAILY" -> "diaria"
+                            "WEEKLY" -> "semanal"
+                            "MONTHLY" -> "mensual"
+                            "YEARLY" -> "anual"
+                            else -> "periódica"
+                        }
+                        NotificationHelper.showTaskReminderNotification(
+                            getApplication<Application>(),
+                            task.id,
+                            "¡Ciclo Completado! 🎉",
+                            "Tarea $recurrenceLabel '${task.title}' programada para el siguiente ciclo. +15 XP"
+                        )
+                        // Reprogramar recordatorio para el nuevo ciclo
+                        val updatedTask = task.copy(
+                            kanbanStatus = "TODO",
+                            isCompleted = false,
+                            dueDateMillis = nextDueDate
+                        )
+                        repository.updateTask(updatedTask)
+                        if (updatedTask.reminderMinutesBefore >= 0) {
+                            AlarmScheduler.scheduleTaskReminder(getApplication<Application>(), updatedTask)
+                        }
+                    } else {
+                        NotificationHelper.showTaskReminderNotification(
+                            getApplication<Application>(),
+                            task.id,
+                            "¡Tarea Completada con Éxito! 🎉",
+                            "Has finalizado '${task.title}'. +15 Puntos de Productividad"
+                        )
+                        repository.updateTask(task.copy(kanbanStatus = "DONE", isCompleted = true))
+                    }
                 }
-                else -> "TODO" to false
+                else -> {
+                    repository.updateTask(task.copy(kanbanStatus = "TODO", isCompleted = false))
+                }
             }
-            repository.updateTask(task.copy(kanbanStatus = nextStatus, isCompleted = isCompleted))
         }
     }
 
@@ -130,8 +165,25 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
 
     fun moveTaskToKanban(task: TaskEntity, targetStatus: String) {
         viewModelScope.launch {
-            val isCompleted = targetStatus == "DONE"
-            repository.updateTask(task.copy(kanbanStatus = targetStatus, isCompleted = isCompleted))
+            if (targetStatus == "DONE" && task.recurrenceInterval != "NONE") {
+                AlarmSoundPlayer.playTaskReminder(getApplication<Application>())
+                val nextDueDate = com.example.util.TaskRecurrenceHelper.calculateNextDueDate(
+                    task.dueDateMillis,
+                    task.recurrenceInterval
+                )
+                val updatedTask = task.copy(
+                    kanbanStatus = "TODO",
+                    isCompleted = false,
+                    dueDateMillis = nextDueDate
+                )
+                repository.updateTask(updatedTask)
+                if (updatedTask.reminderMinutesBefore >= 0) {
+                    AlarmScheduler.scheduleTaskReminder(getApplication<Application>(), updatedTask)
+                }
+            } else {
+                val isCompleted = targetStatus == "DONE"
+                repository.updateTask(task.copy(kanbanStatus = targetStatus, isCompleted = isCompleted))
+            }
         }
     }
 
